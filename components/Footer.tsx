@@ -43,7 +43,9 @@ const Footer: React.FC = () => {
                 </li>
                 <li>
                   <a 
-                    href="#" 
+                    href="./assets/Privacy-Policy.pdf" 
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex items-center gap-2 text-stone-400 hover:text-emerald-500 transition-colors group"
                   >
                     <Lock size={16} />
