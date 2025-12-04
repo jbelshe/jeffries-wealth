@@ -11,6 +11,9 @@ export async function logClientData(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ source, data }),
     });
+    console.log(res);
+    console.log(res.body);
+    console.log(res.status, res.ok);
 
     if (!res.ok) {
       console.warn(`[${source}] logClientData returned ${res.status}`);
