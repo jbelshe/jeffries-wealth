@@ -157,14 +157,11 @@ const prompt = `
       },
     });
 
-    console.log("Gemini response", response);
-    if (response.candidates?.[0]?.content) {
-      return res.status(200).json(response.candidates[0].content);
+    if (response.text) {
+      const parsed = JSON.parse(response.text) as AIAnalysis;
+      console.log(parsed)
+      return res.status(200).json(parsed);
     }
-    // if (response.text) {
-    //   const parsed = JSON.parse(response.text) as AIAnalysis;
-    //   return res.status(200).json(parsed);
-    // }
     throw new Error("No analysis generated");
   } catch (error) {
     console.error("Gemini error", error);
@@ -179,6 +176,7 @@ const prompt = `
       ],
       hiddenRoadmapItems: ["Schedule Review", "Tax Analysis"],
     };
+    console.log("Fallback", fallback);
     return res.status(200).json(fallback);
   }
 }

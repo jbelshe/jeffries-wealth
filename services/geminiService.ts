@@ -14,8 +14,8 @@ export const generateFinancialInsights = async (
   if (!res.ok) {
     throw new Error("Failed to generate financial insights");
   }
-
-  return (await res.json()) as AIAnalysis;
+  const results = await res.json()
+  return (results) as AIAnalysis;
 };
 
 
