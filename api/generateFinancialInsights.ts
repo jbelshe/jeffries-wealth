@@ -83,7 +83,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    console.log("Gemini API Key", process.env.GEMINI_API_KEY);
     const input = req.body as FinancialInput;
 
     const totalAssets = input.cashAmount + input.investedAmount + input.employerStock;
@@ -100,6 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       netWorth,
     );
 
+console.log("Enter Here");
 const prompt = `
       Act as "Jeffries Wealth", a financial planner for high-earners.
       
