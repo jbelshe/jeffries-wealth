@@ -17,7 +17,7 @@ const About: React.FC = () => {
              {/* Image Container */}
              <div className="relative z-10 aspect-[4/5] rounded-2xl overflow-hidden border border-stone-800 bg-stone-950 shadow-2xl group">
                 <img 
-                    src="../assets/headshot_updated_website.png"
+                    src="../public/assets/headshot_updated_website.png"
                     alt="Clark Jeffries"
                     className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
                 />
