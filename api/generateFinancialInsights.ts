@@ -99,7 +99,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       netWorth,
     );
 
-console.log("Enter Here");
 const prompt = `
       Act as "Jeffries Wealth", a financial planner for high-earners.
       
@@ -159,7 +158,6 @@ const prompt = `
 
     if (response.text) {
       const parsed = JSON.parse(response.text) as AIAnalysis;
-      console.log(parsed)
       return res.status(200).json(parsed);
     }
     throw new Error("No analysis generated");
