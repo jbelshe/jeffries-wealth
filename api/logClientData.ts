@@ -1,9 +1,9 @@
 // api/logClientData.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { LoggingSource } from '@/types/loggingsource';
 
 const LOGGING_WEBHOOK_URL = process.env.ZAPIER_LOGGING_WEBHOOK_URL || '';
 
-type LoggingSource = 'WEALTH_SIMULATOR' | 'INTAKE_FORM' | 'NEWSLETTER'; 
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

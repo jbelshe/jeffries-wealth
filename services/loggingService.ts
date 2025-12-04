@@ -1,5 +1,5 @@
 // // services/loggingService.ts
-export type LoggingSource = 'WEALTH_SIMULATOR' | 'INTAKE_FORM' | 'NEWSLETTER'; 
+import {LoggingSource} from '@/types/loggingsource';
 
 export async function logClientData(
   source: LoggingSource,
