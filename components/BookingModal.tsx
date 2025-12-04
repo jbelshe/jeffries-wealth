@@ -185,7 +185,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, source = '
                             className="w-full bg-stone-950 border border-stone-800 rounded-lg px-4 py-3 text-stone-200 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                             placeholder="(555) 123-4567"
                             />
-                        </div>
+                        </div> 
                     </div>
 
                     {/* Standard Fields (Hidden if Audit Source) */}
