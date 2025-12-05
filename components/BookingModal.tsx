@@ -49,13 +49,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, source = '
   };
 
   const handleNext = (e: React.FormEvent) => {
-    console.log("handleNext() called", source, step);
     e.preventDefault();
     
     // Logic for Audit Source: Skip Details Step
     if (source === 'audit' && step === 'contact') {
-        console.log("calling log for intake_form audit_roadmap");
-        //  logClientData('INTAKE_FORM_AUDIT_ROADMAP', formData);
+        // console.log("calling log for intake_form audit_roadmap");
          logClientData('INTAKE_FORM', { 
           ...formData, 
           formType: 'audit_roadmap' 
@@ -68,8 +66,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, source = '
     if (step === 'contact') {
         setStep('details');
     } else if (step === 'details') {
-        console.log("calling log for intake_form audit_roadmap");
-        // logClientData('INTAKE_FORM_GENERAL_BOOKING', formData);
+        // console.log("calling log for intake_form audit_roadmap");
         logClientData('INTAKE_FORM', {
           ...formData, 
           formType: 'general_booking' 

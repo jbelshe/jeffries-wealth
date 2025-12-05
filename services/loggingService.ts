@@ -19,8 +19,6 @@ export async function logClientData(
       console.error(`[${source}] logClientData failed:`, error);
       throw new Error(`Logging failed: ${error}`);
     }
-
-    console.log(res.json())
   } catch (err) {
     console.error(`[${source}] logClientData failed:`, err);
   }
