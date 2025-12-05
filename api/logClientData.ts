@@ -2,10 +2,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { LoggingSource } from '@/types/loggingsource';
 
-const LOGGING_WEBHOOK_URL = process.env.ZAPIER_LOGGING_WEBHOOK_URL!;
+const LOGGING_WEBHOOK_URL = process.env.ZAPIER_LOGGING_WEBHOOK_URL || '';
 
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log(LOGGING_WEBHOOK_URL)
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Use POST' });
   }
@@ -31,11 +32,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     //   referer: (req.headers['referer'] as string) || '',
     };
 
-    await fetch(LOGGING_WEBHOOK_URL, {
+    const response = await fetch(LOGGING_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Webhook error:', response.status, errorText);
+      throw new Error(`Webhook error: ${response.status} ${errorText}`);
+    }
+
+    const responseData = await response.json();
+    console.log('Webhook response:', responseData);
 
     console.log("SUCCESS HERE")
     return res.status(200).json({ ok: true });
