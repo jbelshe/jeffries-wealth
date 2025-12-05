@@ -2,7 +2,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { LoggingSource } from '@/types/loggingsource';
 
-const LOGGING_WEBHOOK_URL = process.env.ZAPIER_LOGGING_WEBHOOK_URL || '';
+const LOGGING_WEBHOOK_URL = process.env.ZAPIER_LOGGING_WEBHOOK_URL!;
 
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -16,6 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    console.log("Enter Here")
     const { source, data } = req.body as { source: LoggingSource; data: any };
 
     if (!source) {
@@ -36,6 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify(payload),
     });
 
+    console.log("SUCCESS HERE")
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('Zapier logging failed:', err);
