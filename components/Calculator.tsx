@@ -263,6 +263,8 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> =
 
         try {
             const analysis = await generateFinancialInsights(fullInput);
+
+            logClientData('WEALTH_SIMULATOR_ANALYSIS', analysis);
             setResult(analysis);
             setHasRun(true);
         } catch (e) {
