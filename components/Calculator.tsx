@@ -276,6 +276,20 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit' | 'private-we
         setChartData(chart);
         try {
             const analysis = await generateFinancialInsights(inputs);
+            
+            // Structure payload to match audit endpoint expectations
+            logClientData('WEALTH_SIMULATOR', {
+                lead: {
+                    firstName: inputs.firstName,
+                    lastName: inputs.lastName,
+                    email: inputs.email,
+                    phone: inputs.phone
+                },
+                keyFacts: analysis.keyFacts,
+                compliance: analysis.compliance,
+                publicInsights: analysis.publicInsights
+            });
+            
             setResult(analysis);
             setHasRun(true);
         } catch (e) {
