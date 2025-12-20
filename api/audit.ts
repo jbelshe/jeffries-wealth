@@ -1,7 +1,7 @@
 // api/audit.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { LoggingSource } from '@/types/loggingsource';
 import { FinancialInput, KeyFacts } from '@/types';
 
@@ -172,7 +172,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } = payload;
 
     // Prepare audit record matching Supabase schema
-    const auditRecord: WealthAuditLogInsert = {
+    const auditRecord: WealthAuditLogInsert & { id: string } = {
+      id: randomUUID(),
       payload_hash: payloadHash,
       source: source as LoggingSource,
       ip: clientIP,
@@ -206,40 +207,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (insertError) {
       console.error('Supabase insert error:', insertError);
-      return res.status(500).json({ error: 'Failed to store audit record', details: insertError.message });
+      throw res.status(500).json({ error: 'Failed to store audit record', details: insertError.message });
     }
-
-    // Optionally forward reduced payload to Zapier
-    if (ZAPIER_WEBHOOK_URL) {
-      try {
-        const reducedPayload = createReducedPayload(payload);
-        
-        const zapierResponse = await fetch(ZAPIER_WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(reducedPayload),
-        });
-
-        if (!zapierResponse.ok) {
-          const errorText = await zapierResponse.text();
-          console.warn('Zapier webhook warning:', zapierResponse.status, errorText);
-          // Don't fail the request if Zapier fails - audit record is already saved
-        }
-      } catch (zapierError) {
-        console.warn('Zapier webhook error (non-fatal):', zapierError);
-        // Don't fail the request if Zapier fails - audit record is already saved
-      }
-    }
-
-    return res.status(200).json({ 
-      ok: true, 
-      auditId: insertData?.id,
-      hash: payloadHash 
-    });
 
   } catch (err) {
     console.error('Audit endpoint error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    throw res.status(500).json({ error: 'Internal server error' });
   }
 }
 
