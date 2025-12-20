@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TrendingUp, ArrowRight, CheckCircle } from 'lucide-react';
 import logoUrl from "../assets/logo.svg";
@@ -20,33 +19,41 @@ const Hero: React.FC<{ onStart: () => void; onBook: () => void }> = ({ onStart, 
           <span>Flat-Fee & Subscription Model &bull; Fiduciary</span>
         </div>
 
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-stone-100 mb-6 font-display">
-          Wealth Planning for <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-amber-200">
-            High-Growth Accumulators
+        {/* Headline Group */}
+        <h1 className="font-display mb-8 flex flex-col items-center gap-6">
+          <span className="text-5xl md:text-7xl font-bold tracking-tight text-stone-100">
+            Build Wealth on Purpose
+          </span>
+          <span className="text-[1.75rem] md:text-[2.6rem] font-medium text-transparent bg-clip-text bg-gradient-to-r from-[#00C67A] to-[#A6F18A] pb-2 leading-tight">
+            Start With a 5-Minute Wealth Audit
           </span>
         </h1>
 
-        <p className="text-xl text-stone-400 max-w-2xl mb-10 leading-relaxed">
-          Stop using "retirement" strategies for your growth years. We specialize in 
-          <strong> variable compensation</strong>, <strong>aggressive tax planning</strong>, 
-          and <strong>cash flow systems</strong> for professionals in Tech & Sales.
+        <p className="text-lg md:text-xl text-stone-400 max-w-2xl mb-10 leading-relaxed">
+          Variable income, RSUs, and high taxes require a smarter kind of planning. Get a personalized breakdown of your top opportunities — in under 5 minutes.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <button
-            onClick={onStart}
-            className="group inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-stone-950 bg-emerald-500 rounded-lg hover:bg-emerald-400 transition-all duration-200 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-          >
-            See The Difference
-            <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
-          <button 
-            onClick={onBook}
-            className="px-8 py-4 text-lg font-semibold text-stone-300 border border-stone-700 rounded-lg hover:bg-stone-900 transition-all"
-          >
-            Book Discovery Call
-          </button>
+        {/* CTA Group */}
+        <div className="flex flex-col items-center">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={onStart}
+              className="group inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-stone-950 bg-emerald-500 rounded-lg hover:bg-emerald-400 transition-all duration-200 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+            >
+              Start Your Free Wealth Audit
+              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button 
+              onClick={onBook}
+              className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-stone-300 border border-stone-700 rounded-lg hover:bg-stone-900 transition-all group"
+            >
+              Book a Discovery Call
+              <ArrowRight className="ml-2 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          </div>
+          <p className="text-xs text-stone-500 mt-4 font-medium tracking-wide">
+            Takes 3–5 minutes • Personalized insights • No commitment required
+          </p>
         </div>
 
         {/* Feature Grid */}
@@ -55,22 +62,22 @@ const Hero: React.FC<{ onStart: () => void; onBook: () => void }> = ({ onStart, 
                 <div className="w-12 h-12 bg-emerald-900/30 rounded-full flex items-center justify-center mb-4 text-emerald-500">
                   <TrendingUp size={24} />
                 </div>
-                <h3 className="text-lg font-semibold text-stone-100">Variable Comp Expert</h3>
-                <p className="text-stone-400 mt-2 leading-relaxed">We build systems that smooth out the volatility of commissions, bonuses, and RSU vesting schedules.</p>
+                <h3 className="text-lg font-semibold text-stone-100">Variable & Equity Compensation</h3>
+                <p className="text-stone-400 mt-2 leading-relaxed">We design cash-flow and tax systems that tame commissions, bonuses, and equity compensation—so volatile income doesn’t derail long-term planning.</p>
             </div>
             <div className="p-8 bg-stone-900/50 backdrop-blur border border-stone-800 rounded-2xl hover:border-emerald-900/50 transition-colors">
                 <div className="w-12 h-12 bg-emerald-900/30 rounded-full flex items-center justify-center mb-4 text-emerald-500">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-3.5L11 21l2.5-2.5L17 21z" /></svg>
                 </div>
-                <h3 className="text-lg font-semibold text-stone-100">Proactive Tax Design</h3>
-                <p className="text-stone-400 mt-2 leading-relaxed">Forward-looking tax planning for high and low income years designed to help lower your lifetime tax rate.</p>
+                <h3 className="text-lg font-semibold text-stone-100">Multi-Year Tax Strategy</h3>
+                <p className="text-stone-400 mt-2 leading-relaxed">Tax planning across high- and low-income years—designed to reduce lifetime taxes, not just this year’s bill.</p>
             </div>
             <div className="p-8 bg-stone-900/50 backdrop-blur border border-stone-800 rounded-2xl hover:border-emerald-900/50 transition-colors">
                  <div className="w-12 h-12 bg-emerald-900/30 rounded-full flex items-center justify-center mb-4 text-emerald-500">
                    <CheckCircle size={24} />
                  </div>
-                <h3 className="text-lg font-semibold text-stone-100">Subscription Pricing</h3>
-                <p className="text-stone-400 mt-2 leading-relaxed">Transparent flat fees. We don't need to "manage" your assets to give you world-class advice.</p>
+                <h3 className="text-lg font-semibold text-stone-100">Flat-Fee, Fiduciary Advice</h3>
+                <p className="text-stone-400 mt-2 leading-relaxed">Transparent subscription pricing. Advice aligned to your goals—not asset balances or commissions.</p>
             </div>
         </div>
       </div>

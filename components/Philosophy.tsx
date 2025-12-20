@@ -67,7 +67,7 @@ const Philosophy: React.FC = () => {
           <PhilosophyCard 
             icon={ShieldCheck}
             title="Fiduciary Standard"
-            description="We sit on the same side of the table as you. No commissions, no hidden kickbacks, and no products to sell. Just unbiased advice focused entirely on your outcomes."
+            description="Fiduciary advice with flexible engagement options, including flat-fee planning and investment management."
           />
 
           <PhilosophyCard 
@@ -82,7 +82,7 @@ const Philosophy: React.FC = () => {
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600"></div>
             <h3 className="text-2xl font-bold text-stone-100 mb-4">The Jeffries Wealth Promise</h3>
             <p className="text-lg text-stone-400 max-w-3xl mx-auto italic">
-              "To provide the sophistication of a family office, the convenience of modern tech, and the care of a trusted friend—all for a transparent flat fee."
+              "To provide the sophistication you deserve, the convenience of modern tech, and the care of a trusted friend—with transparent, clearly disclosed fees."
             </p>
         </div>
       </div>

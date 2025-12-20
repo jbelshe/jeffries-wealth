@@ -14,7 +14,8 @@ import logoUrl from './assets/logo.svg';
 function App() {
   const [isPortalOpen, setIsPortalOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [bookingSource, setBookingSource] = useState<'general' | 'audit'>('general');
+  const [bookingSource, setBookingSource] = useState<'general' | 'audit' | 'private-wealth' | 'discovery'>('general');
+  const [bookingPrefill, setBookingPrefill] = useState<any>(null);
   
   const calculatorRef = useRef<HTMLDivElement>(null);
   const pricingRef = useRef<HTMLDivElement>(null);
@@ -40,10 +41,13 @@ function App() {
     aboutRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const openBooking = (source: 'general' | 'audit' = 'general') => {
-      setBookingSource(source);
-      setIsBookingOpen(true);
-  };
+  const openBooking = (source: 'general' | 'audit' | 'private-wealth' | 'discovery' = 'general', data: any = null) => {
+    setBookingSource(source);
+    if (data) {
+        setBookingPrefill(data);
+    }
+    setIsBookingOpen(true);
+};
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 selection:bg-emerald-500 selection:text-white">
@@ -105,6 +109,7 @@ function App() {
         isOpen={isBookingOpen} 
         onClose={() => setIsBookingOpen(false)} 
         source={bookingSource}
+        prefillData={bookingPrefill}
       />
 
       {/* Client Portal Modal */}
@@ -188,7 +193,7 @@ function App() {
       )}
 
       <main>
-        <Hero onStart={scrollToCalculator} onBook={() => openBooking('general')} />
+        <Hero onStart={scrollToCalculator} onBook={() => openBooking('discovery')} />
         
         {/* Comparison / Value Prop Section */}
         <section className="py-24 bg-stone-900">
@@ -281,7 +286,7 @@ function App() {
         </div>
 
         <div ref={pricingRef}>
-          <Pricing onBook={() => openBooking('general')} />
+          <Pricing onBook={openBooking} />
         </div>
 
         {/* CTA Section */}
@@ -294,7 +299,7 @@ function App() {
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
                     <button 
-                        onClick={() => openBooking('general')}
+                        onClick={() => openBooking('discovery')}
                         className="bg-emerald-600 hover:bg-emerald-500 text-stone-950 font-bold px-8 py-4 rounded-lg transition-colors shadow-lg shadow-emerald-900/20"
                     >
                         Book Discovery Call

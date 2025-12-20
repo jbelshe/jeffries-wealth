@@ -10,7 +10,16 @@ import {
   ArrowRight, 
   Info, 
   Lock, 
-  TrendingUp
+  TrendingUp,
+  X,
+  ShieldCheck,
+  Search,
+  Home,
+  Check,
+  DollarSign,
+  Percent,
+  Activity,
+  Wallet
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -18,12 +27,33 @@ import {
   XAxis, 
   YAxis, 
   CartesianGrid, 
-  Tooltip, 
+  Tooltip as RechartsTooltip, 
   ResponsiveContainer
 } from 'recharts';
 import { FinancialInput, AIAnalysis } from '../types';
-import { generateFinancialInsights } from '../services/geminiService';
+import { generateFinancialInsights } from '../engines/wealthAuditEngine';
 import { logClientData } from '../services/loggingService';
+
+// --- Helper: Tooltip Component ---
+const FieldInfo: React.FC<{ text: string }> = ({ text }) => {
+    const [show, setShow] = useState(false);
+    return (
+        <div className="relative inline-block ml-1.5 align-middle group">
+            <Info 
+                size={14} 
+                className="text-stone-500 cursor-help hover:text-emerald-500 transition-colors"
+                onMouseEnter={() => setShow(true)}
+                onMouseLeave={() => setShow(false)}
+            />
+            {show && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-stone-800 text-[10px] text-stone-200 rounded shadow-xl border border-stone-700 z-50 animate-in fade-in zoom-in duration-150 pointer-events-none">
+                    {text}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-stone-800"></div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 // --- Helper: Formatted Simple Input ---
 const FormattedInput: React.FC<{
@@ -66,90 +96,6 @@ const FormattedInput: React.FC<{
     );
 };
 
-
-// --- Helper Component: InputRow (Slider + Formatted Input) ---
-const InputRow: React.FC<{
-    label: string;
-    value: number;
-    onChange: (val: number) => void;
-    min?: number;
-    max?: number;
-    step?: number;
-    prefix?: string;
-    tooltip?: string;
-}> = ({ label, value, onChange, min = 0, max = 500000, step = 1000, prefix = '$', tooltip }) => {
-    
-    const formatNumber = (num: number) => new Intl.NumberFormat('en-US').format(num);
-    const [localValue, setLocalValue] = useState<string>(formatNumber(value));
-
-    useEffect(() => {
-        const parsedLocal = parseInt(localValue.replace(/,/g, '')) || 0;
-        if (parsedLocal !== value) {
-             setLocalValue(formatNumber(value));
-        }
-    }, [value]);
-
-    const handleBlur = () => {
-        let parsed = parseInt(localValue.replace(/,/g, '')) || 0;
-        if (parsed < min) parsed = min;
-        onChange(parsed);
-        setLocalValue(formatNumber(parsed));
-    };
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        if (/^[0-9,]*$/.test(val)) {
-            setLocalValue(val);
-        } else if (val === '') {
-            setLocalValue('');
-        }
-    };
-
-    const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = parseInt(e.target.value);
-        setLocalValue(formatNumber(val));
-        onChange(val);
-    };
-
-    return (
-        <div className="mb-6 w-full">
-            <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-medium text-stone-300 flex items-center gap-2">
-                    {label}
-                    {tooltip && (
-                        <div className="group relative">
-                            <Info size={14} className="text-stone-500 cursor-help" />
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-stone-800 border border-stone-700 rounded-lg shadow-xl text-xs text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-pre-line">
-                                {tooltip}
-                            </div>
-                        </div>
-                    )}
-                </label>
-                <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 text-sm">{prefix}</span>
-                    <input 
-                        type="text" 
-                        inputMode="numeric"
-                        className="w-36 bg-stone-950 border border-stone-800 rounded-lg py-1.5 pl-6 pr-3 text-right text-stone-200 text-sm focus:border-emerald-500 outline-none transition-colors"
-                        value={localValue}
-                        onChange={handleInputChange}
-                        onBlur={handleBlur}
-                    />
-                </div>
-            </div>
-            <input 
-                type="range" 
-                min={min} 
-                max={max} 
-                step={step} 
-                value={typeof value === 'number' ? value : 0} 
-                onChange={handleSliderChange}
-                className="w-full h-1.5 bg-stone-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-            />
-        </div>
-    );
-};
-
 // --- Helper: Tooltip for Chart ---
 const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -171,100 +117,165 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return null;
 };
 
-// --- Main Component ---
+// --- Initial State ---
 
 const initialInput: FinancialInput = {
-    age: 32,
-    employer: '',
-    role: '',
-    lastYearCompensation: 0,
-    advisoryGoals: [],
+    firstName: '',
+    age: 0,
+    kidsCount: 0,
+    filingStatus: 'Single',
     state: 'CA',
-    filingStatus: 'single',
-    dependents: 0,
-    hasCPA: false,
-    baseSalary: 160000,
-    variableComp: 40000,
-    monthlySpend: 8000,
-    hasLifeInsurance: false,
-    lifeInsuranceSource: 'Work Only',
-    hasDisabilityInsurance: false,
-    disabilitySource: 'Work Only',
-    hasUmbrella: false,
-    knowsAutoLimits: false,
-    hasYoungDrivers: false,
-    beneficiariesUpdated: false,
-    hasEstatePlan: false,
-    estatePlanDate: 'old', // default to safe or old
-    cashAmount: 50000,
-    employerStock: 0,
-    investedAmount: 100000,
-    hasNonMortgageDebt: false,
-    nonMortgageDebtAmount: 0,
-    accountTypes: [],
-    hasPermanentInsurance: false,
-    hasRealEstate: false
+    financialObjectives: [],
+    primaryConcern: '',
+    jobTitle: '',
+    employer: '',
+    additionalNotes: '',
+    annualBaseIncome: 0,
+    annualVariableComp: 0,
+    lastYearTotalComp: 0,
+    equityCompensation: ['None'],
+    equityGrantValue: 0,
+    maxing401k: 'Unsure',
+    hsaEligible: 'Unsure',
+    hsaContributing: 'Unsure',
+    hasCPA: 'No',
+    hasSelfEmploymentIncome: false,
+    hasRealEstateInvestments: false,
+    monthlyTakeHome: 0,
+    monthlySpending: 0,
+    runsSurplus: 'Sometimes / Unsure',
+    surplusAllocation: 'It varies / nothing consistent',
+    hasSavingsSystem: false,
+    netWorth: 0,
+    retirementBalance: 0,
+    retirementSplit: 'Roughly split',
+    cashHoldings: 0,
+    hasConcentratedPosition: false,
+    housingStatus: 'rent',
+    monthlyHousingPayment: 0,
+    mortgageBalance: 0,
+    homeValue: 0,
+    disabilityCoverage: 'None',
+    lifeInsuranceCoverage: 'None',
+    hasWholeLife: 'No',
+    hasUmbrella: 'No',
+    hasEstatePlan: 'No',
+    estateLastReviewed: 'Never / Unsure',
 };
 
-const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> = ({ onBook }) => {
+const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit' | 'private-wealth' | 'discovery', data?: any) => void }> = ({ onBook }) => {
     const [inputs, setInputs] = useState<FinancialInput>(initialInput);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<AIAnalysis | null>(null);
     const [activeSection, setActiveSection] = useState<number>(0);
     const [chartData, setChartData] = useState<any[]>([]);
     const [hasRun, setHasRun] = useState(false);
+    
+    const [analyzing, setAnalyzing] = useState(false);
+    const [analyzeMessage, setAnalyzeMessage] = useState('');
+    const [showGate, setShowGate] = useState(false);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('audit') === 'true') {
+            const calculatorElement = document.getElementById('calculator');
+            if (calculatorElement) {
+                calculatorElement.scrollIntoView({ behavior: 'smooth' });
+                setActiveSection(0);
+            }
+        }
+    }, []);
 
     const handleInputChange = (field: keyof FinancialInput, value: any) => {
         setInputs(prev => ({ ...prev, [field]: value }));
     };
 
-    const calculateProjections = (gross: number, surplus: number, startAssets: number) => {
+    const toggleArraySelection = (field: keyof FinancialInput, value: string) => {
+        setInputs(prev => {
+            const currentArray = prev[field] as string[];
+            if (currentArray.includes(value)) {
+                return { ...prev, [field]: currentArray.filter(item => item !== value) };
+            } else {
+                return { ...prev, [field]: [...currentArray, value] };
+            }
+        });
+    };
+
+    const calculateProjections = (gross: number, surplus: number, netWorth: number) => {
         const data = [];
-        let currentWealth = startAssets;
-        let potentialWealth = startAssets;
+        let currentWealth = netWorth;
+        let potentialWealth = netWorth;
         const years = 10;
+        const currentAge = inputs.age > 0 ? inputs.age : 35;
         
-        const potentialSavings = Math.max(gross * 0.20, surplus);
-        const currentSavings = Math.max(0, surplus); 
-        const statusQuoSavings = currentSavings * 0.5; // Assume 50% leakage
+        const annualSurplus = Math.max(0, surplus);
+        const savingsRate = annualSurplus / Math.max(gross, 1);
+        
+        let statusQuoContribution = 0;
+        let optimizedContribution = 0;
+
+        // Banded contribution logic
+        if (savingsRate <= 0) {
+            statusQuoContribution = 0;
+            optimizedContribution = 0.20 * gross;
+        } else if (savingsRate < 0.20) {
+            statusQuoContribution = 0.50 * annualSurplus;
+            optimizedContribution = 0.20 * gross;
+        } else {
+            statusQuoContribution = 0.50 * annualSurplus;
+            optimizedContribution = 1.00 * annualSurplus;
+        }
 
         for (let i = 0; i <= years; i++) {
             data.push({
-                year: inputs.age + i,
+                year: currentAge + i,
                 Current: Math.round(currentWealth),
                 Potential: Math.round(potentialWealth),
             });
-            currentWealth = (currentWealth * 1.06) + statusQuoSavings; 
-            potentialWealth = (potentialWealth * 1.06) + potentialSavings;
+            // Update wealth using 6% compounding + annual contribution
+            currentWealth = (currentWealth * 1.06) + statusQuoContribution;
+            potentialWealth = (potentialWealth * 1.06) + optimizedContribution;
         }
         return data;
     };
 
-    const handleRunAudit = async () => {
+    const handleInitialRunClick = () => {
+        if (inputs.annualBaseIncome === 0) {
+            alert("Please enter your income information before running the audit.");
+            setActiveSection(1);
+            return;
+        }
+
+        setAnalyzing(true);
+        const messages = [
+            "Calculating 2026 Tax Estimate...", 
+            "Checking Risk Exposure...", 
+            "Analyzing Liquidity Ratios...",
+            "Identifying Wealth Leakage..."
+        ];
+        let i = 0;
+        setAnalyzeMessage(messages[0]);
+        const interval = setInterval(() => {
+            i++;
+            if (i < messages.length) setAnalyzeMessage(messages[i]);
+        }, 1250);
+
+        setTimeout(() => {
+            clearInterval(interval);
+            setAnalyzing(false);
+            setShowGate(true);
+        }, 5000);
+    };
+
+    const executeAudit = async () => {
+        setShowGate(false);
         setLoading(true);
-        const computedGross = inputs.baseSalary + inputs.variableComp;
-        const computedTaxEst = computedGross * 0.30;
-        const computedNetPay = computedGross - computedTaxEst;
-        const computedSurplus = computedNetPay - (inputs.monthlySpend * 12);
-        
-        const fullInput = {
-            ...inputs,
-            computedGross,
-            computedTaxEst,
-            computedNetPay,
-            computedSurplus
-        };
-
-        logClientData('WEALTH_SIMULATOR', fullInput);
-
-        const netWorth = (inputs.cashAmount + inputs.investedAmount + inputs.employerStock) - (inputs.hasNonMortgageDebt ? inputs.nonMortgageDebtAmount : 0);
-        const chart = calculateProjections(computedGross, computedSurplus, netWorth);
+        const computedGross = inputs.annualBaseIncome + inputs.annualVariableComp;
+        const computedSurplus = (inputs.monthlyTakeHome - inputs.monthlySpending) * 12;
+        const chart = calculateProjections(computedGross, computedSurplus, inputs.netWorth);
         setChartData(chart);
-
         try {
-            const analysis = await generateFinancialInsights(fullInput);
-
-            logClientData('WEALTH_SIMULATOR_ANALYSIS', analysis);
+            const analysis = await generateFinancialInsights(inputs);
             setResult(analysis);
             setHasRun(true);
         } catch (e) {
@@ -276,13 +287,13 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> =
     };
 
     const calculateHumanCapitalPotential = () => {
-        let income = inputs.baseSalary + inputs.variableComp;
+        let income = inputs.annualBaseIncome + inputs.annualVariableComp;
         const incomeGrowth = 0.03;
-        const yearsTo60 = 60 - inputs.age;
-        if (yearsTo60 <= 0) return 0;
-
+        const currentAge = inputs.age > 0 ? inputs.age : 35;
+        const retirementAge = 60;
+        const yearsToWork = Math.max(5, retirementAge - currentAge);
         let totalFutureIncome = 0;
-        for (let i = 0; i < yearsTo60; i++) {
+        for (let i = 0; i < yearsToWork; i++) {
             totalFutureIncome += income;
             income = income * (1 + incomeGrowth);
         }
@@ -290,21 +301,25 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> =
     };
 
     const humanCapitalValue = calculateHumanCapitalPotential();
+    const hasComplexEquity = inputs.equityCompensation.some(t => !['None', 'ESPP'].includes(t));
 
     return (
         <section className="py-24 bg-stone-950" id="calculator">
             <div className="max-w-4xl mx-auto px-4">
                  <div className="text-center mb-12">
                     <h2 className="text-3xl md:text-5xl font-bold text-stone-100 mb-4 font-display">Your Human Capital Audit</h2>
-                    <p className="text-stone-400 text-lg max-w-2xl mx-auto">
+                    <p className="text-stone-400 text-lg max-w-2xl mx-auto mb-4">
                         <strong>Quantify</strong> your human capital, identify where your high income is leaking, and <strong>project</strong> the 10-year cost of the status quo.
+                    </p>
+                    <p className="text-[10px] text-stone-600 max-w-xl mx-auto uppercase tracking-wide leading-relaxed italic">
+                        Disclaimer: This tool is for general educational purposes only and does not reflect tax, legal, or investment advice. Information is derived from user inputs which have not been independently verified for accuracy or completeness. Consult with a qualified professional before making any financial decisions.
                     </p>
                 </div>
 
                 {/* --- INPUT FORM --- */}
                 <div className="bg-stone-900 border border-stone-800 rounded-2xl shadow-xl overflow-hidden mb-12">
                     
-                    {/* 1. General Info */}
+                    {/* SECTION 1: General Profile */}
                     <div className="border-b border-stone-800">
                         <button 
                             className="w-full flex items-center justify-between p-6 text-left hover:bg-stone-800 transition-colors"
@@ -312,40 +327,120 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> =
                         >
                             <span className="text-lg font-bold text-stone-200 flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center text-emerald-500 text-sm">1</div>
-                                General Information
+                                General Profile & Objectives
                             </span>
                             {activeSection === 0 ? <ChevronUp className="text-emerald-500"/> : <ChevronDown className="text-stone-500"/>}
                         </button>
                         {activeSection === 0 && (
-                            <div className="p-6 pt-0 grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
-                                <div>
-                                    <label className="text-xs text-stone-400 mb-1 block">Current Age</label>
-                                    <input type="number" className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200" 
-                                        value={inputs.age} onChange={(e) => handleInputChange('age', parseInt(e.target.value) || 0)} />
+                            <div className="p-6 pt-0 animate-in slide-in-from-top-2 duration-200">
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">First Name</label>
+                                        <input 
+                                            type="text" 
+                                            className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            placeholder="Jane"
+                                            value={inputs.firstName}
+                                            onChange={(e) => handleInputChange('firstName', e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Current Age</label>
+                                        <input 
+                                            type="number" 
+                                            className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            placeholder="35"
+                                            value={inputs.age === 0 ? '' : inputs.age}
+                                            onChange={(e) => handleInputChange('age', parseInt(e.target.value) || 0)}
+                                        />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="text-xs text-stone-400 mb-1 block">Employer</label>
-                                    <input type="text" className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200" 
-                                        value={inputs.employer} onChange={(e) => handleInputChange('employer', e.target.value)} placeholder="e.g. Google" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Current Job Title</label>
+                                        <input type="text" className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200" 
+                                            value={inputs.jobTitle} onChange={(e) => handleInputChange('jobTitle', e.target.value)} />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Current Employer</label>
+                                        <input type="text" className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200" 
+                                            value={inputs.employer} onChange={(e) => handleInputChange('employer', e.target.value)} />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="text-xs text-stone-400 mb-1 block">Role</label>
-                                    <input type="text" className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200" 
-                                        value={inputs.role} onChange={(e) => handleInputChange('role', e.target.value)} placeholder="e.g. Sr Director" />
-                                </div>
-                                <div>
-                                    <label className="text-xs text-stone-400 mb-1 block">Last Year's Total Comp</label>
-                                    <FormattedInput 
-                                        value={inputs.lastYearCompensation} 
-                                        onChange={(v) => handleInputChange('lastYearCompensation', v)} 
-                                        placeholder="$0"
+                                <div className="mb-6">
+                                    <label className="text-xs text-stone-400 mb-1 block">Number of Children</label>
+                                    <input 
+                                        type="number" 
+                                        min="0"
+                                        className="w-full md:w-1/2 bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                        placeholder="0"
+                                        value={inputs.kidsCount === 0 ? '0' : inputs.kidsCount}
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            handleInputChange('kidsCount', isNaN(val) || val < 0 ? 0 : val);
+                                        }}
                                     />
+                                </div>
+                                <div className="mb-6">
+                                    <label className="text-xs text-stone-400 mb-2 block font-bold uppercase">Primary Financial Objectives</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[
+                                            "Building long-term wealth", 
+                                            "Reducing taxes", 
+                                            "Creating consistency with variable income", 
+                                            "Improving cash flow",
+                                            "Optionality / early flexibility",
+                                            "Preparing for a major life change",
+                                            "Other"
+                                        ].map(opt => (
+                                            <button
+                                                key={opt}
+                                                onClick={() => toggleArraySelection('financialObjectives', opt)}
+                                                className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all flex items-center gap-2 ${
+                                                    inputs.financialObjectives.includes(opt)
+                                                    ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-400'
+                                                    : 'bg-stone-950 border-stone-800 text-stone-400 hover:border-stone-600'
+                                                }`}
+                                            >
+                                                {inputs.financialObjectives.includes(opt) && <Check size={12} />}
+                                                {opt}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="mb-6">
+                                    <label className="text-xs text-stone-400 mb-2 block font-bold uppercase">Primary Concern Right Now</label>
+                                    <select 
+                                        className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200 text-sm"
+                                        value={inputs.primaryConcern}
+                                        onChange={(e) => handleInputChange('primaryConcern', e.target.value)}
+                                    >
+                                        <option value="">Select one...</option>
+                                        <option>I make good money but don’t feel ahead</option>
+                                        <option>My income is volatile or unpredictable</option>
+                                        <option>Taxes feel higher than they should be</option>
+                                        <option>My finances feel disorganized</option>
+                                        <option>I’m worried about risk or downside</option>
+                                        <option>I’m not sure what to focus on next</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-stone-400 mb-1 block italic font-medium">Anything on your mind? (Optional)</label>
+                                    <textarea 
+                                        className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200 h-20 resize-none text-sm"
+                                        placeholder="Additional context..."
+                                        value={inputs.additionalNotes}
+                                        onChange={(e) => handleInputChange('additionalNotes', e.target.value)}
+                                    />
+                                    <p className="text-[10px] text-red-400 mt-2 font-bold uppercase tracking-wider leading-relaxed">
+                                        Compliance Reminder: Do not enter any personally identifiable or sensitive information (SSN, account numbers, etc).
+                                    </p>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* 2. Income & Tax */}
+                    {/* SECTION 2: Income & Tax */}
                     <div className="border-b border-stone-800">
                         <button 
                             className="w-full flex items-center justify-between p-6 text-left hover:bg-stone-800 transition-colors"
@@ -353,58 +448,136 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> =
                         >
                             <span className="text-lg font-bold text-stone-200 flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center text-emerald-500 text-sm">2</div>
-                                Income & Tax Profile
+                                Income & Tax Structure
                             </span>
                             {activeSection === 1 ? <ChevronUp className="text-emerald-500"/> : <ChevronDown className="text-stone-500"/>}
                         </button>
                         {activeSection === 1 && (
                             <div className="p-6 pt-0 animate-in slide-in-from-top-2 duration-200">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-                                    <InputRow label="Base Salary" value={inputs.baseSalary} onChange={(v) => handleInputChange('baseSalary', v)} max={1000000} />
-                                    <InputRow label="Variable Comp (Bonus/RSU)" value={inputs.variableComp} onChange={(v) => handleInputChange('variableComp', v)} max={2000000} tooltip="Include target bonus, commissions, and RSU vesting value." />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Filing Status</label>
+                                        <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            value={inputs.filingStatus} onChange={(e) => handleInputChange('filingStatus', e.target.value)}>
+                                            <option>Single</option>
+                                            <option>Married Filing Jointly</option>
+                                            <option>Other</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                         <label className="text-xs text-stone-400 mb-1 block">State of Residence</label>
+                                         <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            value={inputs.state} onChange={(e) => handleInputChange('state', e.target.value)}
+                                        >
+                                            {['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'].map(s => <option key={s} value={s}>{s}</option>)}
+                                         </select>
+                                    </div>
                                 </div>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6 items-start">
+                                <div className="space-y-4 mb-6">
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Annual Base Income (Before Tax)</label>
+                                        <FormattedInput value={inputs.annualBaseIncome} onChange={(v) => handleInputChange('annualBaseIncome', v)} placeholder="$0" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Annual Variable Compensation (Bonus, Commish, etc.)</label>
+                                        <FormattedInput value={inputs.annualVariableComp} onChange={(v) => handleInputChange('annualVariableComp', v)} placeholder="$0" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Total Compensation Last Year (Before Tax)</label>
+                                        <FormattedInput value={inputs.lastYearTotalComp} onChange={(v) => handleInputChange('lastYearTotalComp', v)} placeholder="$0" />
+                                    </div>
+                                </div>
+                                <div className="mb-6">
+                                    <label className="text-xs text-stone-400 mb-2 block font-bold uppercase">Equity Compensation</label>
+                                    <div className="flex flex-wrap gap-2 mb-4">
+                                        {["RSUs", "ISOs", "NSOs", "ESPP", "Other", "None"].map(type => (
+                                            <button
+                                                key={type}
+                                                onClick={() => {
+                                                    if (type === 'None') handleInputChange('equityCompensation', ['None']);
+                                                    else {
+                                                        const current = inputs.equityCompensation.filter(t => t !== 'None');
+                                                        if (current.includes(type)) {
+                                                            const newArr = current.filter(t => t !== type);
+                                                            handleInputChange('equityCompensation', newArr.length ? newArr : ['None']);
+                                                        } else handleInputChange('equityCompensation', [...current, type]);
+                                                    }
+                                                }}
+                                                className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                                                    inputs.equityCompensation.includes(type)
+                                                    ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-400'
+                                                    : 'bg-stone-950 border-stone-800 text-stone-400 hover:border-stone-600'
+                                                }`}
+                                            >
+                                                {type}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {hasComplexEquity && (
+                                        <div className="p-4 bg-stone-950 border border-stone-800 rounded-xl animate-in slide-in-from-top-1 duration-200">
+                                            <label className="text-xs text-stone-400 mb-1 block">
+                                                Estimated Total Value of Your Equity Grant
+                                                <FieldInfo text="Include the current market value of all unvested shares (RSUs) or the intrinsic value of options." />
+                                            </label>
+                                            <FormattedInput value={inputs.equityGrantValue} onChange={(v) => handleInputChange('equityGrantValue', v)} placeholder="$0" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                      <div>
-                                        <InputRow label="Monthly Spending" value={inputs.monthlySpend} onChange={(v) => handleInputChange('monthlySpend', v)} max={50000} step={100} tooltip="Everything going out the door: Mortgage, Kids, Travel, Food. Do not include savings/investments." />
-                                     </div>
-
-                                     <div className="flex flex-col gap-4 pt-1">
-                                         <div className="grid grid-cols-2 gap-4 items-center">
-                                            <div>
-                                                <label className="text-xs text-stone-400 mb-1 block">Filing Status</label>
-                                                <select className="w-full bg-stone-950 border border-stone-700 rounded p-2 text-stone-200 text-sm h-[38px]"
-                                                    value={inputs.filingStatus} onChange={(e) => handleInputChange('filingStatus', e.target.value)}
-                                                >
-                                                    <option value="single">Single</option>
-                                                    <option value="joint">Married (Joint)</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                 <label className="text-xs text-stone-400 mb-1 block">State</label>
-                                                 <select className="w-full bg-stone-950 border border-stone-700 rounded p-2 text-stone-200 text-sm h-[38px]"
-                                                    value={inputs.state} onChange={(e) => handleInputChange('state', e.target.value)}
-                                                >
-                                                    {['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'].map(s => <option key={s} value={s}>{s}</option>)}
-                                                 </select>
-                                            </div>
-                                         </div>
-                                         <label className="flex items-center gap-2 cursor-pointer mt-2">
-                                            <input type="checkbox" className="accent-emerald-500 w-4 h-4" checked={inputs.hasCPA} onChange={(e) => handleInputChange('hasCPA', e.target.checked)} />
-                                            <span className="text-sm text-stone-300">I work with a CPA</span>
-                                         </label>
-                                     </div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Maxing Pre-Tax Retirement (401k)?</label>
+                                        <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            value={inputs.maxing401k} onChange={(e) => handleInputChange('maxing401k', e.target.value)}>
+                                            <option>Yes</option>
+                                            <option>No</option>
+                                            <option>Unsure</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">HSA Eligible?</label>
+                                        <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            value={inputs.hsaEligible} onChange={(e) => handleInputChange('hsaEligible', e.target.value)}>
+                                            <option>Yes</option>
+                                            <option>No</option>
+                                            <option>Unsure</option>
+                                        </select>
+                                    </div>
+                                    {inputs.hsaEligible === 'Yes' && (
+                                        <div className="col-span-full animate-in slide-in-from-top-1 duration-200 bg-stone-900/50 p-4 rounded-lg border border-emerald-900/30">
+                                            <label className="text-xs text-stone-400 mb-1 block font-bold text-emerald-500">Are you contributing to your HSA?</label>
+                                            <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                                value={inputs.hsaContributing} onChange={(e) => handleInputChange('hsaContributing', e.target.value)}>
+                                                <option>Yes</option>
+                                                <option>No</option>
+                                                <option>Unsure</option>
+                                            </select>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Do you work with a CPA?</label>
+                                        <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            value={inputs.hasCPA} onChange={(e) => handleInputChange('hasCPA', e.target.value)}>
+                                            <option>Yes</option>
+                                            <option>No</option>
+                                            <option>Sometimes</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex flex-col justify-center space-y-2 pt-4">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" className="accent-emerald-500" checked={inputs.hasSelfEmploymentIncome} onChange={(e) => handleInputChange('hasSelfEmploymentIncome', e.target.checked)} />
+                                            <span className="text-sm text-stone-300">Self-Employment / 1099 Income?</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" className="accent-emerald-500" checked={inputs.hasRealEstateInvestments} onChange={(e) => handleInputChange('hasRealEstateInvestments', e.target.checked)} />
+                                            <span className="text-sm text-stone-300">Own Real Estate Investments?</span>
+                                        </label>
+                                    </div>
                                 </div>
-                                {inputs.filingStatus === 'joint' && (
-                                    <p className="text-xs text-emerald-500/80 bg-emerald-900/10 p-2 rounded border border-emerald-900/30">
-                                        Note: Please ensure Base Salary & Variable Comp include TOTAL household income.
-                                    </p>
-                                )}
                             </div>
                         )}
                     </div>
 
-                    {/* 3. Assets */}
+                    {/* SECTION 3: Cash Flow */}
                     <div className="border-b border-stone-800">
                         <button 
                             className="w-full flex items-center justify-between p-6 text-left hover:bg-stone-800 transition-colors"
@@ -412,57 +585,57 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> =
                         >
                             <span className="text-lg font-bold text-stone-200 flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center text-emerald-500 text-sm">3</div>
-                                Assets & Net Worth
+                                Cash Flow & Savings System
                             </span>
                             {activeSection === 2 ? <ChevronUp className="text-emerald-500"/> : <ChevronDown className="text-stone-500"/>}
                         </button>
                         {activeSection === 2 && (
                             <div className="p-6 pt-0 animate-in slide-in-from-top-2 duration-200">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-                                    <InputRow label="Cash & Savings" value={inputs.cashAmount} onChange={(v) => handleInputChange('cashAmount', v)} max={1000000} step={5000} />
-                                    <InputRow label="Invested Assets" value={inputs.investedAmount} onChange={(v) => handleInputChange('investedAmount', v)} max={3000000} step={5000} tooltip="Total of 401k, IRAs, Brokerage. Do NOT include home equity." />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Approx. Monthly Take-Home Income</label>
+                                        <FormattedInput value={inputs.monthlyTakeHome} onChange={(v) => handleInputChange('monthlyTakeHome', v)} placeholder="$0" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">
+                                            Approx. Monthly Spending
+                                            <FieldInfo text="Include everything (mortgage/rent, utilities, food, etc.) but DO NOT include any savings or investment amounts." />
+                                        </label>
+                                        <FormattedInput value={inputs.monthlySpending} onChange={(v) => handleInputChange('monthlySpending', v)} placeholder="$0" />
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-                                     <InputRow label="Employer Stock" value={inputs.employerStock} onChange={(v) => handleInputChange('employerStock', v)} max={3000000} step={5000} tooltip={`Important: Only include VESTED shares here.\nUnvested RSUs should be counted in "Variable Comp" as future income.`} />
-                                </div>
-                                
-                                {/* Debt Section */}
-                                <div className="mb-6 p-4 bg-stone-900/50 border border-stone-800 rounded-lg">
-                                    <label className="flex items-center gap-2 cursor-pointer mb-4">
-                                        <input type="checkbox" className="accent-emerald-500 w-4 h-4" checked={inputs.hasNonMortgageDebt} onChange={(e) => handleInputChange('hasNonMortgageDebt', e.target.checked)} />
-                                        <span className="text-sm text-stone-300 font-bold">I have non-mortgage debt (Credit Cards, Student Loans)</span>
-                                    </label>
-                                    {inputs.hasNonMortgageDebt && (
-                                        <div className="animate-in slide-in-from-top-2 duration-200">
-                                            <InputRow label="Estimated Debt Amount" value={inputs.nonMortgageDebtAmount} onChange={(v) => handleInputChange('nonMortgageDebtAmount', v)} max={500000} step={1000} />
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <label className="text-xs text-stone-400 mb-2 block">Account Types</label>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                        {['401k/403b', 'Roth 401(k)', 'Roth IRA', 'Trad IRA', 'Brokerage', 'HSA', '529 Plan', 'Crypto'].map(type => (
-                                            <label key={type} className="flex items-center gap-2 p-2 bg-stone-900 border border-stone-800 rounded hover:border-emerald-500/50 cursor-pointer">
-                                                <input type="checkbox" className="accent-emerald-500" 
-                                                    checked={inputs.accountTypes.includes(type)}
-                                                    onChange={(e) => {
-                                                        const newTypes = e.target.checked 
-                                                            ? [...inputs.accountTypes, type]
-                                                            : inputs.accountTypes.filter(t => t !== type);
-                                                        handleInputChange('accountTypes', newTypes);
-                                                    }}
-                                                />
-                                                <span className="text-xs text-stone-300">{type}</span>
-                                            </label>
+                                <div className="mb-6">
+                                    <label className="text-xs text-stone-400 mb-1 block">Do you typically run a monthly surplus?</label>
+                                    <div className="flex bg-stone-950 rounded-lg p-1 border border-stone-700">
+                                        {['Yes', 'No', 'Sometimes / Unsure'].map(opt => (
+                                            <button key={opt} className={`flex-1 py-2 text-xs md:text-sm rounded transition-all ${inputs.runsSurplus === opt ? 'bg-stone-800 text-emerald-400 font-bold' : 'text-stone-400 hover:text-stone-200'}`}
+                                                onClick={() => handleInputChange('runsSurplus', opt)}>{opt}</button>
                                         ))}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Where does surplus usually go?</label>
+                                        <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            value={inputs.surplusAllocation} onChange={(e) => handleInputChange('surplusAllocation', e.target.value)}>
+                                            <option>It varies / nothing consistent</option>
+                                            <option>Retirement accounts</option>
+                                            <option>Taxable investments</option>
+                                            <option>Cash</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex items-center">
+                                         <label className="flex items-center gap-3 cursor-pointer p-4 bg-stone-900 border border-stone-800 rounded-lg w-full">
+                                            <input type="checkbox" className="accent-emerald-500 w-5 h-5" checked={inputs.hasSavingsSystem} onChange={(e) => handleInputChange('hasSavingsSystem', e.target.checked)} />
+                                            <span className="text-sm text-stone-300">I have a defined savings target or system</span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* 4. Risk & Protection */}
+                    {/* SECTION 4: Assets */}
                     <div className="border-b border-stone-800">
                         <button 
                             className="w-full flex items-center justify-between p-6 text-left hover:bg-stone-800 transition-colors"
@@ -470,76 +643,154 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> =
                         >
                              <span className="text-lg font-bold text-stone-200 flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center text-emerald-500 text-sm">4</div>
-                                Risk & Protection
+                                Assets, Liabilities & Liquidity
                             </span>
                             {activeSection === 3 ? <ChevronUp className="text-emerald-500"/> : <ChevronDown className="text-stone-500"/>}
                         </button>
                         {activeSection === 3 && (
                             <div className="p-6 pt-0 animate-in slide-in-from-top-2 duration-200 space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="text-xs text-stone-400 mb-1 block">Number of Dependents</label>
-                                        <input type="number" className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200" 
-                                            value={inputs.dependents} onChange={(e) => handleInputChange('dependents', parseInt(e.target.value) || 0)} />
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <label className="flex items-center gap-2 p-3 bg-stone-900/50 border border-stone-800 rounded cursor-pointer">
-                                            <input type="checkbox" className="accent-emerald-500" checked={inputs.hasLifeInsurance} onChange={(e) => handleInputChange('hasLifeInsurance', e.target.checked)} />
-                                            <span className="text-sm text-stone-300">I have Life Insurance</span>
+                                     <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">
+                                            Approx. Net Worth (Exclude Primary Home)
+                                            <FieldInfo text="Include retirement accounts, brokerage accounts, cash, physical gold, etc. Do not include cars or your primary residence value." />
                                         </label>
-                                        {inputs.hasLifeInsurance && (
-                                            <select className="bg-stone-950 border border-stone-700 rounded p-2 text-stone-300 text-sm ml-6"
-                                                value={inputs.lifeInsuranceSource} onChange={(e) => handleInputChange('lifeInsuranceSource', e.target.value)}
-                                            >
-                                                <option>Work Only</option>
-                                                <option>Private</option>
-                                                <option>Both</option>
-                                            </select>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <label className="flex items-center gap-2 p-3 bg-stone-900/50 border border-stone-800 rounded cursor-pointer">
-                                            <input type="checkbox" className="accent-emerald-500" checked={inputs.hasDisabilityInsurance} onChange={(e) => handleInputChange('hasDisabilityInsurance', e.target.checked)} />
-                                            <span className="text-sm text-stone-300">I have Disability Insurance</span>
-                                        </label>
-                                         {inputs.hasDisabilityInsurance && (
-                                            <select className="bg-stone-950 border border-stone-700 rounded p-2 text-stone-300 text-sm ml-6"
-                                                value={inputs.disabilitySource} onChange={(e) => handleInputChange('disabilitySource', e.target.value)}
-                                            >
-                                                <option>Work Only</option>
-                                                <option>Private</option>
-                                                <option>Both</option>
-                                            </select>
-                                        )}
+                                        <FormattedInput value={inputs.netWorth} onChange={(v) => handleInputChange('netWorth', v)} placeholder="$0" />
                                     </div>
                                     <div>
-                                         <label className="flex items-center gap-2 p-3 bg-stone-900/50 border border-stone-800 rounded cursor-pointer mb-2">
-                                            <input type="checkbox" className="accent-emerald-500" checked={inputs.hasUmbrella} onChange={(e) => handleInputChange('hasUmbrella', e.target.checked)} />
-                                            <span className="text-sm text-stone-300">I have an Umbrella Policy</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 p-3 bg-stone-900/50 border border-stone-800 rounded cursor-pointer">
-                                            <input type="checkbox" className="accent-emerald-500" checked={inputs.hasYoungDrivers} onChange={(e) => handleInputChange('hasYoungDrivers', e.target.checked)} />
-                                            <span className="text-sm text-stone-300">Household drivers under 21</span>
-                                        </label>
+                                        <label className="text-xs text-stone-400 mb-1 block">Total Retirement Account Balance</label>
+                                        <FormattedInput value={inputs.retirementBalance} onChange={(v) => handleInputChange('retirementBalance', v)} placeholder="$0" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Retirement Split (Roth vs Trad)</label>
+                                        <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            value={inputs.retirementSplit} onChange={(e) => handleInputChange('retirementSplit', e.target.value)}>
+                                            <option>Roughly split</option>
+                                            <option>Mostly Traditional</option>
+                                            <option>Mostly Roth</option>
+                                            <option>Unsure</option>
+                                        </select>
                                     </div>
                                     <div>
-                                         <label className="flex items-center gap-2 p-3 bg-stone-900/50 border border-stone-800 rounded cursor-pointer mb-2">
-                                            <input type="checkbox" className="accent-emerald-500" checked={inputs.hasEstatePlan} onChange={(e) => handleInputChange('hasEstatePlan', e.target.checked)} />
-                                            <span className="text-sm text-stone-300">I have a Will / Trust</span>
-                                        </label>
-                                         {inputs.hasEstatePlan && (
-                                            <select className="bg-stone-950 border border-stone-700 rounded p-2 text-stone-300 text-sm ml-6 mb-2 w-full"
-                                                value={inputs.estatePlanDate} onChange={(e) => handleInputChange('estatePlanDate', e.target.value)}
-                                            >
-                                                <option value="recent">Less than 2 years ago</option>
-                                                <option value="medium">2-5 years ago</option>
-                                                <option value="old">More than 5 years ago</option>
-                                            </select>
-                                        )}
-                                        <label className="flex items-center gap-2 p-3 bg-stone-900/50 border border-stone-800 rounded cursor-pointer ml-6">
-                                            <input type="checkbox" className="accent-emerald-500" checked={inputs.beneficiariesUpdated} onChange={(e) => handleInputChange('beneficiariesUpdated', e.target.checked)} />
-                                            <span className="text-sm text-stone-300">Beneficiaries Verified Recently</span>
-                                        </label>
+                                        <label className="text-xs text-stone-400 mb-1 block">Total Cash Holdings</label>
+                                        <FormattedInput value={inputs.cashHoldings} onChange={(v) => handleInputChange('cashHoldings', v)} placeholder="$0" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center py-2">
+                                     <label className="flex items-center gap-3 cursor-pointer p-4 bg-stone-900 border border-stone-800 rounded-lg w-full">
+                                        <input type="checkbox" className="accent-emerald-500 w-5 h-5" checked={inputs.hasConcentratedPosition} onChange={(e) => handleInputChange('hasConcentratedPosition', e.target.checked)} />
+                                        <span className="text-sm text-stone-300">Do you hold a large concentrated position (single stock/equity)?</span>
+                                    </label>
+                                </div>
+                                <div className="p-4 bg-stone-900/50 border border-stone-800 rounded-lg">
+                                    <div className="mb-4">
+                                        <label className="text-xs text-stone-400 mb-1 block">Primary Residence Status</label>
+                                        <div className="flex bg-stone-950 rounded-lg p-1 border border-stone-700 w-48">
+                                            {['Rent', 'Own'].map(opt => (
+                                                <button key={opt} className={`flex-1 py-2 text-sm rounded ${inputs.housingStatus === opt.toLowerCase() ? 'bg-stone-800 text-emerald-400 font-bold' : 'text-stone-400 hover:text-stone-200'}`}
+                                                    onClick={() => handleInputChange('housingStatus', opt.toLowerCase())}>{opt}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {inputs.housingStatus === 'own' && (
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-1">
+                                            <div>
+                                                <label className="text-xs text-stone-400 mb-1 block">Monthly Mortgage Payment</label>
+                                                <FormattedInput value={inputs.monthlyHousingPayment} onChange={(v) => handleInputChange('monthlyHousingPayment', v)} placeholder="$0" />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-stone-400 mb-1 block">Outstanding Balance</label>
+                                                <FormattedInput value={inputs.mortgageBalance} onChange={(v) => handleInputChange('mortgageBalance', v)} placeholder="$0" />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-stone-400 mb-1 block">Approx. Home Value</label>
+                                                <FormattedInput value={inputs.homeValue} onChange={(v) => handleInputChange('homeValue', v)} placeholder="$0" />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* SECTION 5: Risk & Estate */}
+                    <div className="border-b border-stone-800">
+                        <button 
+                            className="w-full flex items-center justify-between p-6 text-left hover:bg-stone-800 transition-colors"
+                            onClick={() => setActiveSection(activeSection === 4 ? -1 : 4)}
+                        >
+                             <span className="text-lg font-bold text-stone-200 flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center text-emerald-500 text-sm">5</div>
+                                Risk, Protection & Estate
+                            </span>
+                            {activeSection === 4 ? <ChevronUp className="text-emerald-500"/> : <ChevronDown className="text-stone-500"/>}
+                        </button>
+                        {activeSection === 4 && (
+                            <div className="p-6 pt-0 animate-in slide-in-from-top-2 duration-200 space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Disability Insurance Coverage</label>
+                                        <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            value={inputs.disabilityCoverage} onChange={(e) => handleInputChange('disabilityCoverage', e.target.value)}>
+                                            <option>None</option>
+                                            <option>Through work</option>
+                                            <option>Private policy</option>
+                                            <option>Both</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Term Life Insurance Coverage</label>
+                                        <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            value={inputs.lifeInsuranceCoverage} onChange={(e) => handleInputChange('lifeInsuranceCoverage', e.target.value)}>
+                                            <option>None</option>
+                                            <option>Through work</option>
+                                            <option>Private policy</option>
+                                            <option>Both</option>
+                                            <option>Not Applicable</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Do you own Whole/Permanent Life?</label>
+                                        <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            value={inputs.hasWholeLife} onChange={(e) => handleInputChange('hasWholeLife', e.target.value)}>
+                                            <option>No</option>
+                                            <option>Yes</option>
+                                            <option>Unsure</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-stone-400 mb-1 block">Do you have Umbrella Liability?</label>
+                                        <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            value={inputs.hasUmbrella} onChange={(e) => handleInputChange('hasUmbrella', e.target.value)}>
+                                            <option>No</option>
+                                            <option>Yes</option>
+                                            <option>Unsure</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-stone-900 border border-stone-800 rounded-lg">
+                                    <div className="mb-4">
+                                        <label className="text-xs text-stone-400 mb-1 block">Do you have a Will or Trust?</label>
+                                        <div className="flex bg-stone-950 rounded-lg p-1 border border-stone-700 w-full md:w-64">
+                                            {['Yes', 'No', 'Unsure'].map(opt => (
+                                                <button key={opt} className={`flex-1 py-2 text-sm rounded ${inputs.hasEstatePlan === opt ? 'bg-stone-800 text-emerald-400 font-bold' : 'text-stone-400 hover:text-stone-200'}`}
+                                                    onClick={() => handleInputChange('hasEstatePlan', opt)}>{opt}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="animate-in fade-in">
+                                        <label className="text-xs text-stone-400 mb-1 block">When were documents/beneficiaries last reviewed?</label>
+                                        <select className="w-full bg-stone-950 border border-stone-700 rounded p-3 text-stone-200"
+                                            value={inputs.estateLastReviewed} onChange={(e) => handleInputChange('estateLastReviewed', e.target.value)}>
+                                            <option>Within the last 3 years</option>
+                                            <option>3–5 years ago</option>
+                                            <option>More than 5 years ago</option>
+                                            <option>Never / Unsure</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -547,31 +798,22 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> =
                     </div>
                     
                     <div className="p-6 bg-stone-900 border-t border-stone-800">
-                        <button 
-                            onClick={handleRunAudit}
-                            disabled={loading}
-                            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-stone-950 font-bold rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-                        >
-                            {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={20} />}
-                            {loading ? 'Running Analysis...' : 'Run Audit'}
-                        </button>
-                        <p className="text-center text-xs text-stone-500 mt-4 leading-relaxed px-4">
-                            Data is processed securely via Google Gemini and is not permanently stored by the AI model. 
-                            Results are stored for compliance reasons locally by Jeffries Wealth Management. 
-                            <br className="hidden sm:block" />
-                            <strong className="text-stone-400 font-medium">Do NOT input any personally identifiable information or private data.</strong>
-                        </p>
+                        {analyzing ? (
+                            <div className="w-full py-4 bg-stone-800 border border-stone-700 rounded-xl flex items-center justify-center gap-3 animate-pulse">
+                                <Loader2 className="animate-spin text-emerald-500" />
+                                <span className="text-emerald-400 font-bold tracking-wide">{analyzeMessage}</span>
+                            </div>
+                        ) : (
+                            <button onClick={handleInitialRunClick} disabled={loading} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-stone-950 font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                                <Sparkles size={20} />
+                                {loading ? 'Fetching Results...' : 'Run Audit'}
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                {/* --- RESULTS DASHBOARD (Hidden until Run) --- */}
-                {/* PREVIEW/BLURRED STATE */}
-                {!hasRun && !loading && (
+                {!hasRun && !loading && !analyzing && (
                     <div className="relative opacity-30 select-none pointer-events-none filter blur-sm">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            <div className="bg-stone-900 border border-stone-800 h-40 rounded-2xl"></div>
-                            <div className="bg-stone-900 border border-stone-800 h-40 rounded-2xl"></div>
-                        </div>
                         <div className="bg-stone-900 border border-stone-800 h-64 rounded-2xl mb-8"></div>
                         <div className="absolute inset-0 flex items-center justify-center z-10">
                             <div className="bg-stone-950/80 p-6 rounded-xl border border-stone-800 text-center">
@@ -584,35 +826,84 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> =
 
                 {result && hasRun && (
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        
-                        {/* 1. AI Findings & Human Capital */}
+                        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl flex flex-col">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-lg font-bold text-stone-100 flex items-center gap-2">
+                                    <Activity size={20} className="text-emerald-500" />
+                                    Key Financial Facts
+                                </h3>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                                <div>
+                                    <p className="text-xs text-stone-500 uppercase tracking-wider mb-1">Total Compensation</p>
+                                    <p className="text-2xl font-bold text-stone-100">${new Intl.NumberFormat('en-US', { notation: "compact" }).format(result.keyFacts.totalComp)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-stone-500 uppercase tracking-wider mb-1">
+                                        Est. Savings Rate
+                                        <FieldInfo text="Estimated as (Take Home - Spending) ÷ Gross Income. Targets over 20% are generally considered strong for high earners." />
+                                    </p>
+                                    <p className={`text-2xl font-bold ${result.keyFacts.savingsRate < 0.10 ? 'text-red-400' : result.keyFacts.savingsRate < 0.20 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                        {Math.round(result.keyFacts.savingsRate * 100)}%
+                                    </p>
+                                    <p className="text-[10px] text-stone-600">% of Gross Income</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-stone-500 uppercase tracking-wider mb-1">
+                                        Est. Tax Rate
+                                        <FieldInfo text="Uses 2026 federal income tax brackets and state tax rate assumptions, includes FICA. Uses standard deduction which may not be the best choice for you. Consult a tax advisor." />
+                                    </p>
+                                    <p className="text-2xl font-bold text-stone-100">{(result.keyFacts.effectiveTaxRate * 100).toFixed(1)}%</p>
+                                    <p className="text-[10px] text-stone-600">Fed + State + FICA</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-stone-500 uppercase tracking-wider mb-1">Est. Annual Tax</p>
+                                    <p className="text-2xl font-bold text-stone-100">${new Intl.NumberFormat('en-US', { notation: "compact" }).format(result.keyFacts.totalTaxEst)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-stone-500 uppercase tracking-wider mb-1">Monthly Surplus</p>
+                                    <p className={`text-2xl font-bold ${result.keyFacts.monthlySurplus >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                        {result.keyFacts.monthlySurplus >= 0 ? '+' : ''}${new Intl.NumberFormat('en-US', { notation: "compact" }).format(result.keyFacts.monthlySurplus)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-stone-500 uppercase tracking-wider mb-1">Liquidity Runway</p>
+                                    <p className={`text-2xl font-bold ${result.keyFacts.cashRunwayMonths < 3 ? 'text-amber-400' : 'text-stone-100'}`}>{result.keyFacts.cashRunwayMonths.toFixed(1)} <span className="text-sm font-normal text-stone-500">mo</span></p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-stone-500 uppercase tracking-wider mb-1">Investable Assets</p>
+                                    <p className="text-2xl font-bold text-stone-100">${new Intl.NumberFormat('en-US', { notation: "compact" }).format(result.keyFacts.netWorthExHome)}</p>
+                                </div>
+                            </div>
+                            <div className="pt-4 border-t border-stone-800 flex justify-center">
+                                <p className="text-[10px] text-stone-500 text-center max-w-lg leading-tight uppercase font-medium">
+                                    Hypothetical estimates based on user inputs. Educational purposes only. Not financial or tax advice. Use of standard deduction assumed.
+                                </p>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             {/* Human Capital Potential Card */}
-                            <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-emerald-500/30 transition-colors">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-900/10 rounded-full blur-[40px] translate-x-10 -translate-y-10"></div>
+                            <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
                                 <div className="flex items-center gap-2 mb-4 text-emerald-400">
                                     <TrendingUp size={20} />
                                     <span className="font-bold text-sm uppercase tracking-wider">Projected Human Capital</span>
                                 </div>
-                                <div className="text-4xl font-bold text-stone-100 mb-2 font-mono">
-                                    ${new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 2 }).format(humanCapitalValue)}
-                                </div>
-                                <p className="text-stone-400 text-sm leading-relaxed mb-4">
-                                    The potential value of your income, not including current savings through age 60.
-                                </p>
-                                <div className="text-[10px] text-stone-600 border-t border-stone-800 pt-3">
-                                    *Hypothetical projection for educational purposes. Assumes 3% annual income growth. Not a guarantee.
+                                <div className="text-4xl font-bold text-stone-100 mb-2 font-mono">${new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 2 }).format(humanCapitalValue)}</div>
+                                <p className="text-stone-400 text-sm">Potential value of future earnings through age 60.</p>
+                                <div className="mt-4 pt-4 border-t border-stone-800">
+                                    <p className="text-[10px] text-stone-500 italic">
+                                        * Calculated as the sum of projected gross income through age 60, assuming a 3% annual growth rate. This represents the total remaining value of your current earning power (Human Capital).
+                                    </p>
                                 </div>
                             </div>
-
-                             {/* AI Headline Card */}
                             <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl flex flex-col justify-center">
-                                <h3 className="text-2xl font-bold text-stone-100 mb-2">{result.headline}</h3>
-                                <div className="flex flex-col gap-3 mt-2">
-                                    {result.publicInsights.map((insight, idx) => (
+                                <h3 className="text-xl font-bold text-stone-100 mb-4">What Stands Out From Your Audit</h3>
+                                <div className="space-y-3">
+                                    {result.publicInsights.slice(0, 3).map((insight, idx) => (
                                         <div key={idx} className="flex items-center gap-3">
                                             {insight.status === 'critical' ? <AlertCircle size={16} className="text-red-500 shrink-0"/> : 
                                              insight.status === 'warning' ? <AlertCircle size={16} className="text-amber-500 shrink-0"/> :
+                                             insight.status === 'info' ? <Info size={16} className="text-blue-400 shrink-0"/> :
                                              <CheckCircle size={16} className="text-emerald-500 shrink-0"/>}
                                             <span className="text-stone-300 text-sm font-medium">{insight.title}</span>
                                         </div>
@@ -621,20 +912,11 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> =
                             </div>
                         </div>
 
-                        {/* 2. Diagnostic Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {result.publicInsights.map((insight, idx) => (
-                                <div key={idx} className={`p-5 rounded-xl border ${
-                                    insight.status === 'critical' ? 'bg-red-950/10 border-red-900/30' : 
-                                    insight.status === 'warning' ? 'bg-amber-950/10 border-amber-900/30' : 
-                                    'bg-emerald-950/10 border-emerald-900/30'
-                                }`}>
-                                    <div className={`mb-2 font-bold ${
-                                        insight.status === 'critical' ? 'text-red-400' : 
-                                        insight.status === 'warning' ? 'text-amber-400' : 
-                                        'text-emerald-400'
-                                    }`}>
-                                        {insight.status.toUpperCase()}
+                                <div key={idx} className={`p-5 rounded-xl border ${insight.status === 'critical' ? 'bg-red-950/10 border-red-900/30' : insight.status === 'warning' ? 'bg-amber-950/10 border-amber-900/30' : insight.status === 'info' ? 'bg-blue-950/10 border-blue-900/30' : 'bg-emerald-950/10 border-emerald-900/30'}`}>
+                                    <div className={`mb-2 font-bold text-[10px] uppercase tracking-widest ${insight.status === 'critical' ? 'text-red-400' : insight.status === 'warning' ? 'text-amber-400' : insight.status === 'info' ? 'text-blue-400' : 'text-emerald-400'}`}>
+                                        {insight.status}
                                     </div>
                                     <h4 className="text-stone-200 font-bold text-sm mb-1">{insight.title}</h4>
                                     <p className="text-xs text-stone-400 leading-relaxed">{insight.description}</p>
@@ -642,28 +924,26 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> =
                             ))}
                         </div>
 
-                        {/* 3. The 10-Year Chart */}
-                        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl">
-                            <div className="flex items-center justify-between mb-8">
+                        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-8 shadow-xl">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                                 <div>
-                                    <h3 className="text-xl font-bold text-stone-100">10-Year Opportunity Cost</h3>
-                                    <p className="text-sm text-stone-400">The gap between the status quo vs. optimization.</p>
+                                    <h3 className="text-xl font-bold text-stone-100 mb-2">Illustrative 10-Year Opportunity Cost</h3>
+                                    <p className="text-xs text-stone-500 leading-relaxed max-w-xl">
+                                        This illustration compares two hypothetical planning behaviors over time based on different savings and reinvestment assumptions. It highlights how consistent savings and reinvestment behaviors can compound over long periods.
+                                    </p>
                                 </div>
-                                <div className="flex gap-4 text-xs font-mono">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                                        <span className="text-stone-300">Potential Wealth</span>
+                                <div className="flex flex-wrap gap-4 text-[10px] uppercase tracking-wider font-bold shrink-0">
+                                    <div className="flex items-center gap-2 text-emerald-500">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> Illustrative Optimized Scenario
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-stone-600"></div>
-                                        <span className="text-stone-500">Current Path</span>
+                                    <div className="flex items-center gap-2 text-stone-500">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-stone-600"></div> Illustrative Status Quo
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div className="h-[300px] w-full">
+                            <div className="h-[320px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                    <AreaChart data={chartData}>
                                         <defs>
                                             <linearGradient id="colorPotential" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -671,128 +951,77 @@ const Calculator: React.FC<{ onBook: (source?: 'general' | 'audit') => void }> =
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#292524" vertical={false} />
-                                        <XAxis dataKey="year" stroke="#57534e" fontSize={12} tickLine={false} axisLine={false} />
-                                        <YAxis 
-                                            stroke="#57534e" 
-                                            fontSize={12} 
-                                            tickLine={false} 
-                                            axisLine={false}
-                                            tickFormatter={(value) => `$${value / 1000}k`}
-                                        />
-                                        <Tooltip content={<CustomTooltip />} />
-                                        <Area 
-                                            type="monotone" 
-                                            dataKey="Potential" 
-                                            stroke="#10b981" 
-                                            strokeWidth={3}
-                                            fillOpacity={1} 
-                                            fill="url(#colorPotential)" 
-                                        />
-                                        <Area 
-                                            type="monotone" 
-                                            dataKey="Current" 
-                                            stroke="#57534e" 
-                                            strokeWidth={2}
-                                            strokeDasharray="5 5"
-                                            fill="transparent" 
-                                        />
+                                        <XAxis dataKey="year" stroke="#57534e" fontSize={11} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#57534e" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value / 1000}k`} />
+                                        <RechartsTooltip content={<CustomTooltip />} />
+                                        <Area name="Illustrative Optimized Scenario" type="monotone" dataKey="Potential" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorPotential)" />
+                                        <Area name="Illustrative Status Quo" type="monotone" dataKey="Current" stroke="#57534e" strokeWidth={2} strokeDasharray="5 5" fill="transparent" />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
-                            <div className="mt-4 text-[10px] text-stone-600 text-center">
-                                *Assumes 6% real return. "Potential Wealth" calculates based on a 20% savings target or your actual surplus, whichever is higher. 
-                                "Current Path" assumes 50% of surplus is lost to lifestyle creep/inefficiency.
-                            </div>
-                        </div>
-
-                        {/* 4. Cash Flow Waterfall */}
-                        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                             {/* Block 1: Gross */}
-                             <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 text-center h-28 w-full md:w-1/4 flex flex-col justify-center">
-                                <div className="text-stone-500 text-xs uppercase tracking-wider mb-1">Gross Income</div>
-                                <div className="text-xl font-bold text-stone-200">
-                                    ${new Intl.NumberFormat('en-US', { notation: "compact" }).format(inputs.baseSalary + inputs.variableComp)}
-                                </div>
-                             </div>
-                             
-                             <div className="hidden md:flex text-stone-600"><ArrowRight size={20}/></div>
-                             
-                             {/* Block 2: Taxes */}
-                             <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 text-center group relative cursor-help h-28 w-full md:w-1/4 flex flex-col justify-center">
-                                <div className="text-stone-500 text-xs uppercase tracking-wider mb-1">Est. Taxes</div>
-                                <div className="text-xl font-bold text-red-400">
-                                    -${new Intl.NumberFormat('en-US', { notation: "compact" }).format((inputs.baseSalary + inputs.variableComp) * 0.30)}
-                                </div>
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-stone-800 rounded text-[10px] text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-                                    Est. ~30% effective rate (Fed+State+FICA)
-                                </div>
-                             </div>
-                             
-                             <div className="hidden md:flex text-stone-600"><ArrowRight size={20}/></div>
-                             
-                             {/* Block 3: Lifestyle */}
-                             <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 text-center group relative cursor-help h-28 w-full md:w-1/4 flex flex-col justify-center">
-                                <div className="text-stone-500 text-xs uppercase tracking-wider mb-1">Lifestyle</div>
-                                <div className="text-xl font-bold text-amber-400">
-                                    -${new Intl.NumberFormat('en-US', { notation: "compact" }).format(inputs.monthlySpend * 12)}
-                                </div>
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-stone-800 rounded text-[10px] text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-                                    Annualized monthly spend: ${inputs.monthlySpend}/mo * 12
-                                </div>
-                             </div>
-                             
-                             <div className="hidden md:flex text-stone-600"><ArrowRight size={20}/></div>
-                             
-                             {/* Block 4: Potential Surplus */}
-                             <div className="bg-emerald-900/10 border border-emerald-900/50 rounded-xl p-4 text-center group relative cursor-help h-28 w-full md:w-1/4 flex flex-col justify-center">
-                                <div className="text-emerald-500 text-xs uppercase tracking-wider mb-1">Potential Surplus</div>
-                                <div className="text-xl font-bold text-emerald-400">
-                                    ${new Intl.NumberFormat('en-US', { notation: "compact" }).format(Math.max(0, (inputs.baseSalary + inputs.variableComp) * 0.70 - (inputs.monthlySpend * 12)))}
-                                </div>
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-stone-800 rounded text-[10px] text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-                                    This is the "Fuel" available to build wealth if optimized correctly.
-                                </div>
-                             </div>
-                        </div>
-
-                        {/* 5. Roadmap CTA (Locked) */}
-                        <div className="bg-stone-950 rounded-2xl p-8 border border-stone-800 text-center relative overflow-hidden">
-                            <div className="absolute inset-0 bg-stone-900/50 backdrop-blur-[2px]"></div>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center space-y-2 opacity-10 select-none pointer-events-none">
-                                {result.hiddenRoadmapItems.map((item, idx) => (
-                                    <div key={idx} className="bg-stone-800 w-3/4 h-8 rounded-lg"></div>
-                                ))}
-                            </div>
-                            
-                            <div className="relative z-10">
-                                <div className="w-12 h-12 bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-500 mx-auto mb-4">
-                                    <Lock size={24} />
-                                </div>
-                                <h3 className="text-2xl font-bold text-stone-100 mb-2">We've found 3 specific strategies for your situation.</h3>
-                                <p className="text-stone-400 mb-8 max-w-lg mx-auto">
-                                    Book a review call to unlock the full roadmap.
+                            <div className="mt-8 pt-6 border-t border-stone-800 space-y-4">
+                                <p className="text-[10px] text-stone-600 leading-relaxed">
+                                    <span className="font-bold text-stone-500 uppercase tracking-widest block mb-1">Disclosure of Assumptions</span>
+                                    Assumptions include a hypothetical 6% long-term real return and consistent annual contributions. The "Optimized Scenario" illustratively assumes a contribution level equal to either a 20% gross income benchmark (when current reported savings are below 20%) or 100% of the reported annual surplus (when savings are 20% or higher). The "Status Quo" scenario assumes that 50% of the current reported surplus is captured and reinvested, while the remaining half is hypothetically lost to lifestyle creep or cash flow inefficiencies. Actual market returns, personal behavior, tax outcomes, and financial circumstances can vary significantly from these models.
                                 </p>
-                                <button 
-                                    onClick={() => onBook('audit')}
-                                    className="inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-stone-950 bg-emerald-500 rounded-lg hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-                                >
-                                    Get Your Roadmap
-                                    <ArrowRight className="ml-2 w-5 h-5" />
-                                </button>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <p className="text-[9px] text-stone-700 leading-relaxed italic">
+                                        <strong>Performance Disclaimer:</strong> This illustration is hypothetical and for educational purposes only. It does not represent actual investment performance and should not be interpreted as a forecast, recommendation, or guarantee of future results.
+                                    </p>
+                                    <p className="text-[9px] text-stone-700 leading-relaxed italic">
+                                        <strong>Advisory Relationship Clarification:</strong> This illustration does not reflect the impact of any specific advisory service, investment strategy, or portfolio. It should not be relied upon as a substitute for personalized financial advice.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Legal Disclosures */}
-                         <div className="text-[10px] text-stone-600 max-w-3xl mx-auto text-center leading-relaxed">
-                            IMPORTANT: This tool is for educational purposes only and does not constitute financial advice. 
-                            Projections are hypothetical and based on assumptions (6% real return, constant tax rates) that may not reflect actual market conditions. 
-                            Human capital projections assume continuous employment and income growth which are not guaranteed. 
-                            Consult with a qualified professional before making investment decisions.
+                        <div className="bg-stone-950 rounded-2xl p-8 border border-stone-800 text-center relative overflow-hidden">
+                            <div className="relative z-10">
+                                <div className="w-12 h-12 bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-500 mx-auto mb-4"><Lock size={24} /></div>
+                                <h3 className="text-2xl font-bold text-stone-100 mb-6 max-w-xl mx-auto">
+                                    Your inputs surfaced several planning considerations worth deeper discussion.
+                                </h3>
+                                <button onClick={() => onBook('audit', inputs)} className="inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-stone-950 bg-emerald-500 rounded-lg hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] mb-4">
+                                    Review Your Results <ArrowRight className="ml-2 w-5 h-5" />
+                                </button>
+                                <p className="text-xs text-stone-500 max-w-sm mx-auto leading-relaxed">
+                                    Use this session to walk through context, assumptions, and potential next steps. No obligation.
+                                </p>
+                            </div>
                         </div>
-
+                        
+                        {/* Final Compliance Footer */}
+                        <div className="text-[10px] text-stone-600 text-center max-w-2xl mx-auto space-y-2">
+                            <p>Results are generated using a deterministic, rules-based framework and stored for record keeping purposes by Jeffries Wealth Management, LLC. Outputs are illustrative and provided for educational purposes only and do not constitute personalized financial advice.</p>
+                            <p className="uppercase tracking-widest font-bold">This is not a substitute for professional financial or tax advice.</p>
+                        </div>
                     </div>
                 )}
             </div>
+
+            {showGate && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-stone-950/90 backdrop-blur-sm" onClick={() => setShowGate(false)}></div>
+                    <div className="relative w-full max-w-md bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl p-6 animate-in fade-in zoom-in duration-200">
+                        <div className="text-center mb-6">
+                            <div className="w-12 h-12 bg-emerald-900/20 rounded-full flex items-center justify-center text-emerald-500 mx-auto mb-4"><ShieldCheck size={24} /></div>
+                            <h3 className="text-xl font-bold text-stone-100 mb-2">Unlock Your Report</h3>
+                            <p className="text-sm text-stone-400">Enter your details to reveal your findings and projected wealth gap.</p>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <input type="text" className="w-full bg-stone-950 border border-stone-800 rounded-lg p-3 text-stone-200" placeholder="First Name" value={inputs.firstName} onChange={(e) => handleInputChange('firstName', e.target.value)} />
+                                <input type="text" className="w-full bg-stone-950 border border-stone-800 rounded-lg p-3 text-stone-200" placeholder="Last Name" value={inputs.lastName} onChange={(e) => handleInputChange('lastName', e.target.value)} />
+                            </div>
+                            <input type="email" className="w-full bg-stone-950 border border-stone-800 rounded-lg p-3 text-stone-200" placeholder="Email Address" value={inputs.email} onChange={(e) => handleInputChange('email', e.target.value)} />
+                            <input type="tel" className="w-full bg-stone-950 border border-stone-800 rounded-lg p-3 text-stone-200" placeholder="Phone Number" value={inputs.phone} onChange={(e) => handleInputChange('phone', e.target.value)} />
+                            <button onClick={() => { if (inputs.email && inputs.firstName) executeAudit(); else alert("Please enter at least your Name and Email to proceed."); }} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-stone-950 font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                                <Lock size={18} /> Unlock Results
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </section>
     );
 };

@@ -31,7 +31,7 @@ const Newsletter: React.FC = () => {
                     Join the Inner Circle
                 </h2>
                 <p className="text-stone-400 mb-10 max-w-xl mx-auto text-lg">
-                    Weekly insights on equity compensation, tax strategy, and wealth accumulation. No spam, just value.
+                    Insights on equity compensation, tax strategy, and wealth accumulation. No spam, just value.
                 </p>
 
                 {status === 'success' ? (

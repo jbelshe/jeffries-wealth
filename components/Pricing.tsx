@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Check, Plus, Rocket, Users, Briefcase } from 'lucide-react';
+import { Check, Plus, Rocket, Users, Shield } from 'lucide-react';
 
 const PricingCard = ({ 
     title, 
@@ -8,15 +9,19 @@ const PricingCard = ({
     features, 
     icon: Icon, 
     highlighted = false,
-    onBook
+    onBook,
+    ctaText = "Get Started",
+    footerSubtext
 }: { 
     title: string; 
-    price: string; 
+    price: string | null; 
     description: string; 
     features: string[]; 
     icon: any;
     highlighted?: boolean;
     onBook: () => void;
+    ctaText?: string;
+    footerSubtext?: string;
 }) => (
     <div className={`relative flex flex-col p-8 rounded-2xl border transition-all duration-300 ${
         highlighted 
@@ -37,13 +42,21 @@ const PricingCard = ({
             </div>
             <div>
                 <h3 className="text-xl font-bold text-stone-100">{title}</h3>
-                <div className="text-stone-500 text-sm">Monthly Subscription</div>
+                <div className="text-stone-500 text-xs mt-0.5">
+                    {price ? 'Monthly Subscription' : 'Professional Advisory'}
+                </div>
             </div>
         </div>
 
         <div className="mb-6">
-            <span className="text-4xl font-bold text-stone-100">{price}</span>
-            <span className="text-stone-500">/mo</span>
+            {price ? (
+                <>
+                    <span className="text-4xl font-bold text-stone-100">{price}</span>
+                    <span className="text-stone-500">/mo</span>
+                </>
+            ) : (
+                <span className="text-2xl font-bold text-stone-100 italic">Strategic Advisory</span>
+            )}
             <p className="mt-3 text-stone-400 text-sm leading-relaxed min-h-[60px]">
                 {description}
             </p>
@@ -58,19 +71,26 @@ const PricingCard = ({
             ))}
         </div>
 
-        <button 
-            onClick={onBook}
-            className={`w-full py-4 rounded-xl font-bold text-sm transition-all ${
-            highlighted 
-            ? 'bg-emerald-600 hover:bg-emerald-500 text-stone-950 shadow-lg' 
-            : 'bg-stone-900 hover:bg-stone-800 text-stone-300 border border-stone-800'
-        }`}>
-            Get Started
-        </button>
+        <div className="space-y-3">
+            <button 
+                onClick={onBook}
+                className={`w-full py-4 rounded-xl font-bold text-sm transition-all ${
+                highlighted 
+                ? 'bg-emerald-600 hover:bg-emerald-500 text-stone-950 shadow-lg' 
+                : 'bg-stone-900 hover:bg-stone-800 text-stone-300 border border-stone-800'
+            }`}>
+                {ctaText}
+            </button>
+            {footerSubtext && (
+                <p className="text-[10px] text-stone-600 text-center italic tracking-wide">
+                    {footerSubtext}
+                </p>
+            )}
+        </div>
     </div>
 );
 
-const Pricing: React.FC<{ onBook: () => void }> = ({ onBook }) => {
+const Pricing: React.FC<{ onBook: (source?: 'general' | 'audit' | 'private-wealth' | 'discovery') => void }> = ({ onBook }) => {
   return (
     <section className="py-24 bg-stone-950 relative overflow-hidden" id="pricing">
         {/* Background blobs */}
@@ -93,7 +113,7 @@ const Pricing: React.FC<{ onBook: () => void }> = ({ onBook }) => {
                     price="$200"
                     icon={Rocket}
                     description="For single professionals establishing their financial foundation."
-                    onBook={onBook}
+                    onBook={() => onBook('discovery')}
                     features={[
                         "Cash flow & Budgeting System",
                         "Employer Benefit Review",
@@ -109,7 +129,7 @@ const Pricing: React.FC<{ onBook: () => void }> = ({ onBook }) => {
                     icon={Users}
                     highlighted={true}
                     description="For dual-income households and high earners with complexity."
-                    onBook={onBook}
+                    onBook={() => onBook('discovery')}
                     features={[
                         "Everything in Emerging",
                         "RSU & Stock Option Strategy",
@@ -121,18 +141,20 @@ const Pricing: React.FC<{ onBook: () => void }> = ({ onBook }) => {
                 />
 
                 <PricingCard 
-                    title="Business Owner"
-                    price="$800"
-                    icon={Briefcase}
-                    description="For entrepreneurs requiring entity and advanced tax structure."
-                    onBook={onBook}
+                    title="Private Wealth"
+                    price={null}
+                    icon={Shield}
+                    ctaText="Request Private Wealth Access"
+                    footerSubtext="Engagements are customized and capacity-limited."
+                    description="For households with $5M+ in investable assets, complex compensation, or upcoming liquidity events requiring proactive, multi-year planning."
+                    onBook={() => onBook('private-wealth')}
                     features={[
                         "Everything in Accumulator",
-                        "Entity Structure Analysis",
-                        "Business Retirement Plans (SEP/401k)",
-                        "Bookkeeping Coordination",
-                        "Exit Planning Strategy",
-                        "On-Demand Advisor Access"
+                        "Advanced tax coordination and multi-year planning",
+                        "Concentrated stock and liquidity event planning",
+                        "Tax-aware strategies designed for high-tax households",
+                        "Estate, trust, and beneficiary coordination",
+                        "Ongoing strategic advisory access"
                     ]}
                 />
             </div>

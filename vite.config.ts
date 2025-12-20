@@ -15,7 +15,6 @@ export default defineConfig(({ mode }) => {
         svgr(),
       ],
       define: {
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.ZAPIER_LOGGING_WEBHOOK_URL': JSON.stringify(env.ZAPIER_LOGGING_WEBHOOK_URL),
       },
       resolve: {
