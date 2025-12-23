@@ -10,6 +10,7 @@ import Footer from './components/Footer';
 import BookingModal from './components/BookingModal';
 import Newsletter from './components/Newsletter';
 import logoUrl from './assets/logo.svg';
+import { Analytics } from '@vercel/analytics/react';
 
 function App() {
   const [isPortalOpen, setIsPortalOpen] = useState(false);
@@ -312,6 +313,7 @@ function App() {
       </main>
 
       <Footer />
+      <Analytics />
     </div>
   );
 }

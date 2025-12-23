@@ -26,8 +26,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       timestamp: new Date().toISOString(),
       source,
       ...data,
-    //   userAgent: req.headers['user-agent'] || '',
-    //   referer: (req.headers['referer'] as string) || '',
     };
 
     const response = await fetch(LOGGING_WEBHOOK_URL, {
@@ -46,6 +44,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('Zapier logging failed:', err);
-    return res.status(500).json({ error: 'Logging failed' });
+    throw res.status(500).json({ error: 'Logging failed' });
   }
 }
