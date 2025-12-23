@@ -211,7 +211,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error('Supabase insert error:', insertError);
       throw res.status(500).json({ error: 'Failed to store audit record', details: insertError.message });
     }
-
+    return res.status(200).json({ message: 'Audit record stored successfully' });
   } catch (err) {
     console.error('Audit endpoint error:', err);
     throw res.status(500).json({ error: 'Internal server error' });
